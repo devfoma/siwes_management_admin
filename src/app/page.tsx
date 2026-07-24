@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useSIWES, type AdminSupervisor, type DynamicStudentProfile } from '../context/SIWESContext';
+import { useSIWES, type AdminSupervisor, type DynamicStudentProfile, type AdminUser } from '../context/SIWESContext';
 import { 
   Users, 
   UserCheck, 
@@ -18,7 +18,10 @@ import {
   ShieldAlert,
   Loader2,
   MapPin,
-  CheckCircle
+  CheckCircle,
+  Shield,
+  UserPlus,
+  Zap
 } from 'lucide-react';
 
 type AdminTab = 'STUDENTS' | 'SUPERVISORS' | 'SETTINGS';
@@ -28,7 +31,9 @@ export default function Home() {
   const { 
     supervisorsList, 
     studentsList, 
+    adminsList,
     addSupervisor, 
+    addAdmin,
     assignSupervisorToStudent, 
     loading: siwesLoading,
     syncError
@@ -66,6 +71,20 @@ export default function Home() {
   const [formError, setFormError] = useState<string>('');
   const [formSuccess, setFormSuccess] = useState<string>('');
   const [submittingSupervisor, setSubmittingSupervisor] = useState<boolean>(false);
+
+  // Add Admin Modal state
+  const [showAddAdminModal, setShowAddAdminModal] = useState<boolean>(false);
+  const [adminName, setAdminName] = useState<string>('');
+  const [adminEmail, setAdminEmail] = useState<string>('');
+  const [adminPassword, setAdminPassword] = useState<string>('');
+  const [adminDepartment, setAdminDepartment] = useState<string>('SIWES Unit');
+  const [adminFormError, setAdminFormError] = useState<string>('');
+  const [adminFormSuccess, setAdminFormSuccess] = useState<string>('');
+  const [submittingAdmin, setSubmittingAdmin] = useState<boolean>(false);
+
+  // Seed admin state
+  const [seedingAdmin, setSeedingAdmin] = useState<boolean>(false);
+  const [seedResult, setSeedResult] = useState<string>('');
 
   // Metrics
   const totalStudents = studentsList.length;
@@ -307,10 +326,69 @@ export default function Home() {
     );
   }
 
+  // Handle Add Admin Submit
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminName.trim() || !adminEmail.trim() || !adminPassword.trim()) {
+      setAdminFormError('All fields are required.');
+      return;
+    }
+    if (adminPassword.trim().length < 6) {
+      setAdminFormError('Password must be at least 6 characters.');
+      return;
+    }
+    setAdminFormError('');
+    setAdminFormSuccess('');
+    setSubmittingAdmin(true);
+
+    try {
+      const createdEmail = adminEmail.trim();
+      const createdPassword = adminPassword.trim();
+      await addAdmin(adminName.trim(), createdEmail, createdPassword, adminDepartment.trim());
+      setAdminFormSuccess(`Admin created. Email: ${createdEmail} | Password: ${createdPassword}`);
+      setAdminName('');
+      setAdminEmail('');
+      setAdminPassword('');
+      setAdminDepartment('SIWES Unit');
+    } catch (err: unknown) {
+      setAdminFormError(err instanceof Error ? err.message : 'Could not create admin account.');
+    } finally {
+      setSubmittingAdmin(false);
+    }
+  };
+
+  const closeAddAdminModal = () => {
+    setShowAddAdminModal(false);
+    setAdminFormError('');
+    setAdminFormSuccess('');
+  };
+
+  // Handle Seed Default Admin
+  const handleSeedDefaultAdmin = async () => {
+    setSeedingAdmin(true);
+    setSeedResult('');
+    setAuthError('');
+    try {
+      const response = await fetch('/api/admin/seed', { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) {
+        setAuthError(result.error || 'Could not seed admin.');
+      } else if (result.admin?.alreadyExisted) {
+        setSeedResult('Default admin already exists. Log in with: admin@siwesconnect.edu.ng / SIWESAdmin2025!');
+      } else {
+        setSeedResult(`Default admin created! Email: ${result.admin?.email} | Password: ${result.admin?.password}`);
+      }
+    } catch (err: unknown) {
+      setAuthError(err instanceof Error ? err.message : 'Seed failed.');
+    } finally {
+      setSeedingAdmin(false);
+    }
+  };
+
   // Unauthenticated Form
   if (!session) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 bg-[#0f1511]">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 bg-[#0f1511] min-h-screen">
         <div className="w-full max-w-md flex flex-col items-center mb-8">
           <div className="w-16 h-16 rounded-full bg-[#1b211d] border-2 border-[#0f5132] flex items-center justify-center shadow-lg">
             <GraduationCap className="w-8 h-8 text-[#95d4ac]" />
@@ -322,24 +400,7 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-md card-tactile p-6">
-          <div className="flex border-b border-gray-800 mb-6 bg-[#0a100c] p-1 rounded-lg">
-            <button
-              onClick={() => { setIsSignUpMode(false); setAuthError(''); setAuthSuccess(''); }}
-              className={`flex-1 py-2 text-center text-sm font-bold rounded-md transition-all ${
-                !isSignUpMode ? 'bg-[#198754] text-white' : 'text-[#c0c9c0] hover:text-white'
-              }`}
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => { setIsSignUpMode(true); setAuthError(''); setAuthSuccess(''); }}
-              className={`flex-1 py-2 text-center text-sm font-bold rounded-md transition-all ${
-                isSignUpMode ? 'bg-[#198754] text-white' : 'text-[#c0c9c0] hover:text-white'
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
+          <h2 className="text-center text-sm font-bold text-white mb-6 uppercase tracking-wider">Administrator Login</h2>
 
           {authError && (
             <div className="mb-4 p-3 bg-red-950/40 border border-red-900 rounded-lg text-sm text-red-300 font-semibold text-center flex items-center justify-center gap-2">
@@ -355,23 +416,14 @@ export default function Home() {
             </div>
           )}
 
-          <form onSubmit={handleAuthAction} className="space-y-4">
-            {isSignUpMode && (
-              <div>
-                <label className="block text-xs font-bold text-[#c0c9c0] uppercase tracking-wider mb-1.5">Full Name</label>
-                <div className="recessed-input-wrapper px-3 py-2 flex items-center">
-                  <input
-                    type="text"
-                    required
-                    value={authFullName}
-                    onChange={(e) => setAuthFullName(e.target.value)}
-                    placeholder="e.g. Administrator Coord"
-                    className="w-full bg-transparent text-white placeholder-gray-600 text-sm focus:outline-none"
-                  />
-                </div>
-              </div>
-            )}
+          {seedResult && (
+            <div className="mb-4 p-3 bg-amber-950/40 border border-amber-800 rounded-lg text-xs text-amber-200 font-semibold text-center leading-relaxed">
+              <Zap className="w-4 h-4 inline-block mr-1.5 text-amber-400" />
+              {seedResult}
+            </div>
+          )}
 
+          <form onSubmit={handleAuthAction} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-[#c0c9c0] uppercase tracking-wider mb-1.5">Email Address</label>
               <div className="recessed-input-wrapper px-3 py-2 flex items-center">
@@ -380,7 +432,7 @@ export default function Home() {
                   required
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="admin@university.edu.ng"
+                  placeholder="admin@siwesconnect.edu.ng"
                   className="w-full bg-transparent text-white placeholder-gray-600 text-sm focus:outline-none"
                 />
               </div>
@@ -400,31 +452,6 @@ export default function Home() {
               </div>
             </div>
 
-            {isSignUpMode && (
-              <>
-                <div>
-                  <label className="block text-xs font-bold text-[#c0c9c0] uppercase tracking-wider mb-1.5">Administration Department</label>
-                  <div className="recessed-input-wrapper px-3 py-2 flex items-center">
-                    <input
-                      type="text"
-                      required
-                      value={authDept}
-                      onChange={(e) => setAuthDept(e.target.value)}
-                      placeholder="e.g. SIWES Directorate"
-                      className="w-full bg-transparent text-white placeholder-gray-600 text-sm focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-3 bg-emerald-950/20 border border-[#0f5132]/30 rounded-lg flex gap-3">
-                  <Info className="w-5 h-5 text-[#95d4ac] shrink-0" />
-                  <p className="text-xs text-[#95d4ac] leading-relaxed">
-                    This portal registers admin accounts. Supervisors should be provisioned via this dashboard once logged in.
-                  </p>
-                </div>
-              </>
-            )}
-
             <button
               type="submit"
               disabled={submittingAuth}
@@ -433,10 +460,30 @@ export default function Home() {
               {submittingAuth ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <span>{isSignUpMode ? 'Register Account' : 'Authenticate Credentials'}</span>
+                <span>Authenticate Credentials</span>
               )}
             </button>
           </form>
+
+          <div className="mt-6 pt-4 border-t border-gray-800/60">
+            <p className="text-[10px] text-[#77da9f] text-center mb-3 uppercase tracking-wider font-bold">First time setup?</p>
+            <button
+              onClick={handleSeedDefaultAdmin}
+              disabled={seedingAdmin}
+              className="w-full py-2.5 bg-amber-900/20 hover:bg-amber-900/35 border border-amber-700/40 text-amber-100 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {seedingAdmin ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Zap className="w-3.5 h-3.5" />
+              )}
+              <span>{seedingAdmin ? 'Initializing...' : 'Initialize Default Admin Account'}</span>
+            </button>
+            <p className="text-[9px] text-gray-500 text-center mt-2 leading-relaxed">
+              Creates a default admin: <span className="text-gray-400">admin@siwesconnect.edu.ng</span> / <span className="text-gray-400">SIWESAdmin2025!</span><br />
+              Requires SUPABASE_SERVICE_ROLE_KEY in .env.local
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -687,45 +734,104 @@ export default function Home() {
           )}
 
           {activeTab === 'SETTINGS' && (
-            <div className="max-w-xl card-tactile p-4 sm:p-6 space-y-6">
-              <div>
-                <h3 className="text-xs font-bold text-[#c0c9c0] uppercase tracking-wider pb-2 border-b border-gray-800">
-                  Administrator Profile
+            <div className="max-w-2xl space-y-6">
+              {/* Current Admin Profile */}
+              <div className="card-tactile p-4 sm:p-6 space-y-6">
+                <div>
+                  <h3 className="text-xs font-bold text-[#c0c9c0] uppercase tracking-wider pb-2 border-b border-gray-800">
+                    Your Administrator Profile
+                  </h3>
+
+                  <div className="flex items-center gap-4 mt-4">
+                    <div className="w-12 h-12 rounded-full bg-[#0a100c] border border-[#0f5132] flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-[#95d4ac]" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">{session?.user?.user_metadata?.full_name || 'SIWES Administrator'}</h4>
+                      <p className="text-xs text-[#77da9f]">Role: Administrator</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-3 border-t border-gray-800/40 text-xs">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
+                    <span className="font-bold text-[#c0c9c0]">Admin Email:</span>
+                    <span className="break-all text-white">{session?.user?.email || 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
+                    <span className="font-bold text-[#c0c9c0]">Access Scope:</span>
+                    <span className="text-white">University-Wide Portal</span>
+                  </div>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
+                    <span className="font-bold text-[#c0c9c0]">Total Admins:</span>
+                    <span className="text-white">{adminsList.length}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={signOut}
+                  className="w-full py-2.5 bg-red-900/30 hover:bg-red-900/50 border border-red-700/60 text-red-100 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+
+              {/* Admin Accounts Management */}
+              <div className="card-tactile p-4 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+                  <h3 className="text-xs font-bold text-[#c0c9c0] uppercase tracking-wider">
+                    Admin Accounts ({adminsList.length})
+                  </h3>
+                  <button
+                    onClick={() => setShowAddAdminModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 btn-primary text-[10px] cursor-pointer shadow-sm"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Add Admin</span>
+                  </button>
+                </div>
+
+                {adminsList.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic py-4 text-center">No admin accounts found. Use the button above to add one.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {adminsList.map((admin: AdminUser) => (
+                      <div
+                        key={admin.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-[#0f1511] border border-gray-800/50 hover:border-[#0f5132]/40 transition-all"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-[#0a100c] border border-[#0f5132]/50 flex items-center justify-center shrink-0">
+                          <Shield className="w-4 h-4 text-[#77da9f]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-white truncate">{admin.fullName}</h4>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            {admin.email || 'Email not available'}
+                            {admin.department ? ` · ${admin.department}` : ''}
+                          </p>
+                        </div>
+                        {session?.user?.id === admin.id && (
+                          <span className="text-[8px] font-bold text-amber-400 uppercase tracking-wide bg-amber-900/20 px-2 py-0.5 rounded-full border border-amber-700/30">You</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sync Info */}
+              <div className="card-tactile p-4 sm:p-6">
+                <h3 className="text-xs font-bold text-[#c0c9c0] uppercase tracking-wider pb-2 border-b border-gray-800 mb-3">
+                  Data Sync Status
                 </h3>
-
-                <div className="flex items-center gap-4 mt-4">
-                  <div className="w-12 h-12 rounded-full bg-[#0a100c] border border-[#0f5132] flex items-center justify-center">
-                    <span className="text-base font-bold text-[#95d4ac]">AD</span>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">SIWES Coordinator Admin</h4>
-                    <p className="text-xs text-[#muted]">Role: Root Administrator</p>
-                  </div>
+                <div className="p-3 bg-emerald-950/20 border border-[#0f5132]/30 rounded-lg flex gap-3">
+                  <Info className="w-5 h-5 text-[#95d4ac] shrink-0" />
+                  <p className="text-xs text-[#95d4ac] leading-relaxed">
+                    This dashboard is connected to your Supabase backend with <strong>realtime sync</strong>. Any students, supervisors, or logbook entries added from the mobile Expo app will appear here automatically.
+                  </p>
                 </div>
               </div>
-
-              <div className="space-y-3 pt-3 border-t border-gray-800/40 text-xs">
-                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
-                  <span className="font-bold text-[#c0c9c0]">Office / Directorate:</span>
-                  <span className="text-white">SIWES Unit, Academic Planning</span>
-                </div>
-                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
-                  <span className="font-bold text-[#c0c9c0]">Access Scope:</span>
-                  <span className="text-white">University-Wide Portal</span>
-                </div>
-                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
-                  <span className="font-bold text-[#c0c9c0]">Admin Email:</span>
-                  <span className="break-all text-white">{session?.user?.email || 'admin@university.edu.ng'}</span>
-                </div>
-              </div>
-
-              <button
-                onClick={signOut}
-                className="w-full py-2.5 bg-red-900/30 hover:bg-red-900/50 border border-red-700/60 text-red-100 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
-              </button>
             </div>
           )}
         </div>
@@ -938,6 +1044,106 @@ export default function Home() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Admin Modal */}
+      {showAddAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-4 bg-black/85 backdrop-blur-sm">
+          <div className="my-auto w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto bg-[#1b211d] border border-[#0f5132] rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-850">
+              <h3 className="text-sm font-bold text-white">Create New Admin Account</h3>
+              <button 
+                onClick={closeAddAdminModal}
+                className="text-[#c0c9c0] hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {adminFormError && (
+              <p className="rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-xs font-bold text-red-300">{adminFormError}</p>
+            )}
+
+            {adminFormSuccess && (
+              <p className="rounded-lg border border-emerald-900 bg-emerald-950/40 px-3 py-2 text-xs font-bold leading-relaxed text-emerald-300">{adminFormSuccess}</p>
+            )}
+
+            <form onSubmit={handleAddAdmin} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-[#c0c9c0] uppercase tracking-wider mb-1">Full Name</label>
+                <div className="recessed-input-wrapper px-3 py-2">
+                  <input
+                    type="text"
+                    required
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    placeholder="e.g. Dr. Chinedu Okafor"
+                    className="w-full bg-transparent text-white placeholder-gray-600 text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[#c0c9c0] uppercase tracking-wider mb-1">Login Email</label>
+                <div className="recessed-input-wrapper px-3 py-2">
+                  <input
+                    type="email"
+                    required
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="e.g. admin2@university.edu.ng"
+                    className="w-full bg-transparent text-white placeholder-gray-600 text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[#c0c9c0] uppercase tracking-wider mb-1">Password</label>
+                <div className="recessed-input-wrapper px-3 py-2">
+                  <input
+                    type="text"
+                    required
+                    minLength={6}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full bg-transparent text-white placeholder-gray-600 text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[#c0c9c0] uppercase tracking-wider mb-1">Department</label>
+                <div className="recessed-input-wrapper px-3 py-2">
+                  <input
+                    type="text"
+                    required
+                    value={adminDepartment}
+                    onChange={(e) => setAdminDepartment(e.target.value)}
+                    placeholder="e.g. SIWES Directorate"
+                    className="w-full bg-transparent text-white placeholder-gray-600 text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-emerald-950/20 border border-[#0f5132]/30 rounded-lg flex gap-3">
+                <Info className="w-5 h-5 text-[#95d4ac] shrink-0" />
+                <p className="text-xs text-[#95d4ac] leading-relaxed">
+                  The new admin will be able to log into this dashboard and manage students, supervisors, and other admins.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingAdmin}
+                className="w-full py-2.5 btn-primary text-xs tracking-wider uppercase cursor-pointer shadow-md mt-2 flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {submittingAdmin && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{submittingAdmin ? 'Creating Account...' : 'Create Admin Account'}</span>
+              </button>
+            </form>
           </div>
         </div>
       )}

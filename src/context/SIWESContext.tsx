@@ -80,6 +80,15 @@ interface SupervisionSessionRow {
   notes: string | null;
 }
 
+export interface AdminUser {
+  id: string;
+  fullName: string;
+  email?: string;
+  department?: string;
+  role: 'ADMIN';
+  createdAt?: string;
+}
+
 interface SIWESContextType {
   userRole: UserRole;
   studentProfile: DynamicStudentProfile;
@@ -88,6 +97,7 @@ interface SIWESContextType {
   supervisionSessions: SupervisionSession[];
   supervisorsList: AdminSupervisor[];
   studentsList: DynamicStudentProfile[];
+  adminsList: AdminUser[];
   loading: boolean;
   syncError: string | null;
   toggleUserRole: () => void;
@@ -105,6 +115,12 @@ interface SIWESContextType {
     designation: string,
     type: 'ACADEMIC' | 'INDUSTRY'
   ) => Promise<AdminSupervisor>;
+  addAdmin: (
+    fullName: string,
+    email: string,
+    password: string,
+    department: string
+  ) => Promise<AdminUser>;
   assignSupervisorToStudent: (studentId: string, supervisorId: string) => Promise<void>;
 }
 
@@ -199,6 +215,7 @@ export const SIWESProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [supervisionSessions, setSupervisionSessions] = useState<SupervisionSession[]>([]);
   const [supervisorsList, setSupervisorsList] = useState<AdminSupervisor[]>([]);
   const [studentsList, setStudentsList] = useState<DynamicStudentProfile[]>([]);
+  const [adminsList, setAdminsList] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -274,12 +291,32 @@ export const SIWESProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [user]);
 
+  const fetchAdminsList = useCallback(async () => {
+    if (!session?.access_token) return;
+
+    try {
+      const response = await fetch('/api/admin/admins', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAdminsList(result.admins || []);
+      }
+    } catch {
+      // Silently fail — admin list is non-critical
+    }
+  }, [session?.access_token]);
+
   const refreshWorkspace = useCallback(async () => {
     if (!user || !isSupabaseConfigured) {
       setStudentsList([]);
       setSupervisorsList([]);
       setLogbookEntries([]);
       setSupervisionSessions([]);
+      setAdminsList([]);
       setSyncError(!isSupabaseConfigured ? 'Supabase is not configured for the admin dashboard.' : null);
       return;
     }
@@ -324,12 +361,15 @@ export const SIWESProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setLogbookEntries(((logRows || []) as LogbookEntryRow[]).map(mapLogbookEntry));
       setSupervisionSessions(((sessionRows || []) as SupervisionSessionRow[]).map(mapSupervisionSession));
+
+      // Fetch admin list from the API
+      await fetchAdminsList();
     } catch (error) {
       setSyncError(getSyncErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  }, [ensureCurrentUserProfile, user]);
+  }, [ensureCurrentUserProfile, fetchAdminsList, user]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -538,6 +578,37 @@ export const SIWESProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newSupervisor;
   };
 
+  const addAdmin = async (
+    fullName: string,
+    email: string,
+    password: string,
+    department: string
+  ): Promise<AdminUser> => {
+    if (!session?.access_token) {
+      throw new Error('You must be signed in as an admin to create admin accounts.');
+    }
+
+    const response = await fetch('/api/admin/admins', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, fullName, department }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.admin) {
+      throw new Error(result.error || 'Could not create admin account.');
+    }
+
+    const newAdmin = result.admin as AdminUser;
+    setAdminsList((prev) => [...prev, newAdmin]);
+    await fetchAdminsList();
+    return newAdmin;
+  };
+
   const assignSupervisorToStudent = async (studentId: string, supervisorId: string) => {
     const { error } = await supabase
       .from('student_profiles')
@@ -564,6 +635,7 @@ export const SIWESProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         supervisionSessions,
         supervisorsList,
         studentsList,
+        adminsList,
         loading,
         syncError,
         toggleUserRole,
@@ -572,6 +644,7 @@ export const SIWESProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateLogbookStatus,
         scheduleSession,
         addSupervisor,
+        addAdmin,
         assignSupervisorToStudent,
       }}
     >
