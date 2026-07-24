@@ -234,9 +234,75 @@ export default function Home() {
 
   if (authLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#0f1511]">
-        <Loader2 className="w-12 h-12 text-[#77da9f] animate-spin" />
-        <p className="mt-4 text-[#c0c9c0] font-medium">Checking authentication...</p>
+      <div className="flex-1 flex flex-col bg-[#0f1511] min-h-screen animate-pulse">
+        {/* Header Skeleton */}
+        <header className="bg-[#1b211d] border-b border-[#0f5132] px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-emerald-950/50 border border-[#0f5132]/50" />
+            <div>
+              <div className="h-4 w-40 bg-emerald-950/50 rounded" />
+              <div className="h-3 w-28 bg-emerald-950/30 rounded mt-1.5" />
+            </div>
+          </div>
+          <div className="h-8 w-24 bg-red-950/20 border border-red-900/20 rounded-lg" />
+        </header>
+
+        {/* Main Grid Layout Skeleton */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+          {/* Navigation Tabs Skeleton */}
+          <div className="flex bg-[#1b211d] border border-[#0f5132]/50 p-1 rounded-lg self-start">
+            <div className="h-8 w-24 bg-emerald-950/30 rounded-md mx-1" />
+            <div className="h-8 w-24 bg-emerald-950/20 rounded-md mx-1" />
+            <div className="h-8 w-24 bg-emerald-950/20 rounded-md mx-1" />
+          </div>
+
+          {/* Metrics Bar Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-[#1b211d] border border-[#0f5132]/50 rounded-xl p-4 flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-3 w-20 bg-emerald-950/30 rounded" />
+                  <div className="h-6 w-12 bg-emerald-950/50 rounded" />
+                </div>
+                <div className="w-8 h-8 rounded bg-emerald-950/30" />
+              </div>
+            ))}
+          </div>
+
+          {/* Dynamic Content Frame Skeleton */}
+          <div className="flex-1 space-y-6">
+            <div className="h-4 w-56 bg-emerald-950/40 rounded" />
+            
+            {/* Faculty Folder Block Skeleton */}
+            <div className="bg-[#131915] border border-gray-900/50 rounded-xl p-4 space-y-4">
+              <div className="h-5 w-48 bg-[#1b211d] rounded border border-gray-800" />
+              
+              {/* Department Block Skeleton */}
+              <div className="pl-2 space-y-3">
+                <div className="h-3.5 w-36 bg-emerald-950/25 rounded" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="bg-[#1b211d] border border-[#0f5132]/30 rounded-xl p-4 flex justify-between items-start gap-4">
+                      <div className="space-y-2.5 flex-1">
+                        <div className="h-4 w-3/4 bg-emerald-950/40 rounded" />
+                        <div className="h-3 w-1/2 bg-emerald-950/25 rounded" />
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <div className="w-3.5 h-3.5 rounded bg-emerald-950/30" />
+                          <div className="h-3 w-2/3 bg-emerald-950/25 rounded" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-3 shrink-0">
+                        <div className="h-5 w-24 bg-emerald-950/30 rounded-lg" />
+                        <div className="h-7 w-20 bg-emerald-950/20 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
