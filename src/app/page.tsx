@@ -550,10 +550,10 @@ export default function Home() {
         
         {/* Navigation & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="grid w-full grid-cols-5 bg-[#1b211d] border border-[#0f5132] p-1 rounded-lg sm:flex sm:w-auto sm:self-start">
+          <div className="flex w-full overflow-x-auto hide-scrollbar snap-x snap-mandatory bg-[#1b211d] border border-[#0f5132] p-1 rounded-lg sm:w-auto sm:self-start gap-1">
             <button
               onClick={() => setActiveTab('STUDENTS')}
-              className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
+              className={`shrink-0 snap-start justify-center px-3 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
                 activeTab === 'STUDENTS' ? 'bg-[#198754] text-white' : 'text-[#77da9f] hover:text-white'
               }`}
             >
@@ -562,7 +562,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('SUPERVISORS')}
-              className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
+              className={`shrink-0 snap-start justify-center px-3 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
                 activeTab === 'SUPERVISORS' ? 'bg-[#198754] text-white' : 'text-[#77da9f] hover:text-white'
               }`}
             >
@@ -571,7 +571,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('LOGBOOK')}
-              className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
+              className={`shrink-0 snap-start justify-center px-3 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
                 activeTab === 'LOGBOOK' ? 'bg-[#198754] text-white' : 'text-[#77da9f] hover:text-white'
               }`}
             >
@@ -580,7 +580,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('SESSIONS')}
-              className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
+              className={`shrink-0 snap-start justify-center px-3 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
                 activeTab === 'SESSIONS' ? 'bg-[#198754] text-white' : 'text-[#77da9f] hover:text-white'
               }`}
             >
@@ -589,7 +589,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('SETTINGS')}
-              className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
+              className={`shrink-0 snap-start justify-center px-3 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
                 activeTab === 'SETTINGS' ? 'bg-[#198754] text-white' : 'text-[#77da9f] hover:text-white'
               }`}
             >
