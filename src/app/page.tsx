@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSIWES, type AdminSupervisor, type DynamicStudentProfile, type AdminUser } from '../context/SIWESContext';
+import type { LogbookEntry, SupervisionSession } from '../interfaces/types';
 import { 
   Users, 
   UserCheck, 
@@ -21,10 +22,14 @@ import {
   CheckCircle,
   Shield,
   UserPlus,
-  Zap
+  Zap,
+  BookOpen,
+  Calendar,
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 
-type AdminTab = 'STUDENTS' | 'SUPERVISORS' | 'SETTINGS';
+type AdminTab = 'STUDENTS' | 'SUPERVISORS' | 'LOGBOOK' | 'SESSIONS' | 'SETTINGS';
 
 export default function Home() {
   const { session, loading: authLoading, signIn, signUp, signOut } = useAuth();
@@ -32,6 +37,9 @@ export default function Home() {
     supervisorsList, 
     studentsList, 
     adminsList,
+    logbookEntries,
+    supervisionSessions,
+    updateLogbookStatus,
     addSupervisor, 
     addAdmin,
     assignSupervisorToStudent, 
@@ -58,6 +66,13 @@ export default function Home() {
   const [showAddSupervisorModal, setShowAddSupervisorModal] = useState<boolean>(false);
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
   const [selectedStudent, setSelectedStudent] = useState<DynamicStudentProfile | null>(null);
+
+  // Review Modal state
+  const [reviewEntryId, setReviewEntryId] = useState<string | null>(null);
+  const [reviewFeedback, setReviewFeedback] = useState<string>('');
+  const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string>('');
+  const [reviewSuccess, setReviewSuccess] = useState<string>('');
 
   // Add Supervisor Form state
   const [supName, setSupName] = useState<string>('');
@@ -91,6 +106,7 @@ export default function Home() {
   const totalSupervisors = supervisorsList.length;
   const assignedStudents = studentsList.filter(s => Boolean(s.supervisorId)).length;
   const assignmentRate = totalStudents > 0 ? Math.round((assignedStudents / totalStudents) * 100) : 0;
+  const totalLogbookEntries = logbookEntries?.length || 0;
 
   // Handle Login / Sign Up Submit
   const handleAuthAction = async (e: React.FormEvent) => {
@@ -249,6 +265,33 @@ export default function Home() {
     }
     setShowAssignModal(false);
     setSelectedStudent(null);
+  };
+
+  const handleReviewSubmit = async (status: 'APPROVED' | 'REJECTED') => {
+    if (!reviewEntryId) return;
+    setSubmittingReview(true);
+    setReviewError('');
+    setReviewSuccess('');
+    try {
+      await updateLogbookStatus(reviewEntryId, status, reviewFeedback);
+      setReviewSuccess('Logbook status updated successfully.');
+      setTimeout(() => {
+        setReviewEntryId(null);
+        setReviewFeedback('');
+        setReviewSuccess('');
+      }, 1500);
+    } catch (err: any) {
+      setReviewError(err.message || 'Failed to update review status.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const openReviewModal = (entry: LogbookEntry) => {
+    setReviewEntryId(entry.id);
+    setReviewFeedback(entry.supervisorFeedback || '');
+    setReviewError('');
+    setReviewSuccess('');
   };
 
   if (authLoading) {
@@ -507,7 +550,7 @@ export default function Home() {
         
         {/* Navigation & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="grid w-full grid-cols-3 bg-[#1b211d] border border-[#0f5132] p-1 rounded-lg sm:flex sm:w-auto sm:self-start">
+          <div className="grid w-full grid-cols-5 bg-[#1b211d] border border-[#0f5132] p-1 rounded-lg sm:flex sm:w-auto sm:self-start">
             <button
               onClick={() => setActiveTab('STUDENTS')}
               className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
@@ -525,6 +568,24 @@ export default function Home() {
             >
               <UserCheck className="w-4 h-4 shrink-0" />
               <span className="truncate">Supervisors</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('LOGBOOK')}
+              className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
+                activeTab === 'LOGBOOK' ? 'bg-[#198754] text-white' : 'text-[#77da9f] hover:text-white'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 shrink-0" />
+              <span className="truncate">Logbook</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('SESSIONS')}
+              className={`min-w-0 justify-center px-2 py-2 rounded-md text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 ${
+                activeTab === 'SESSIONS' ? 'bg-[#198754] text-white' : 'text-[#77da9f] hover:text-white'
+              }`}
+            >
+              <Calendar className="w-4 h-4 shrink-0" />
+              <span className="truncate">Sessions</span>
             </button>
             <button
               onClick={() => setActiveTab('SETTINGS')}
@@ -564,7 +625,7 @@ export default function Home() {
 
         {/* Metrics Bar (only visible when not on settings) */}
         {activeTab !== 'SETTINGS' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="card-tactile p-4 flex items-center justify-between">
               <div>
                 <span className="block text-[10px] font-bold text-[#muted] uppercase tracking-wider">Total Students</span>
@@ -587,6 +648,14 @@ export default function Home() {
                 <span className="block text-2xl font-bold text-emerald-400 mt-1">{assignmentRate}%</span>
               </div>
               <CheckCircle className="w-8 h-8 text-emerald-400 opacity-80" />
+            </div>
+
+            <div className="card-tactile p-4 flex items-center justify-between">
+              <div>
+                <span className="block text-[10px] font-bold text-[#muted] uppercase tracking-wider">Logbook Entries</span>
+                <span className="block text-2xl font-bold text-[#95d4ac] mt-1">{totalLogbookEntries}</span>
+              </div>
+              <BookOpen className="w-8 h-8 text-[#95d4ac] opacity-80" />
             </div>
           </div>
         )}
@@ -729,6 +798,135 @@ export default function Home() {
                     )}
                   </div>
                 ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'LOGBOOK' && (
+            <div className="space-y-4">
+              <h2 className="text-sm font-bold text-white tracking-wide">Student Logbook Submissions</h2>
+              {(!logbookEntries || logbookEntries.length === 0) ? (
+                <p className="text-[#muted] text-sm italic">No logbook entries submitted yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {logbookEntries.map(entry => {
+                    const student = studentsList.find(s => s.id === entry.studentId);
+                    return (
+                      <div key={entry.id} className="card-tactile p-4 flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-gray-800 pb-3">
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{student?.fullName || 'Unknown Student'}</h4>
+                            <p className="text-xs text-[#muted] mt-0.5">Submitted: {new Date(entry.entryDate).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {/* AI Status Badge */}
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border flex items-center gap-1 ${
+                              entry.aiStatus === 'COMPLIANT' ? 'bg-[#198754]/10 text-[#198754] border-[#198754]/20' :
+                              entry.aiStatus === 'WARNING' ? 'bg-amber-900/20 text-amber-500 border-amber-700/30' :
+                              entry.aiStatus === 'CRITICAL' ? 'bg-red-900/20 text-red-500 border-red-700/30' :
+                              'bg-gray-800/50 text-gray-400 border-gray-700'
+                            }`}>
+                              AI: {entry.aiStatus}
+                            </span>
+                            {/* Supervisor Status Badge */}
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border flex items-center gap-1 ${
+                              entry.supervisorStatus === 'APPROVED' ? 'bg-[#198754]/10 text-[#198754] border-[#198754]/20' :
+                              entry.supervisorStatus === 'REJECTED' ? 'bg-red-900/20 text-red-500 border-red-700/30' :
+                              'bg-gray-800/50 text-gray-400 border-gray-700'
+                            }`}>
+                              {entry.supervisorStatus}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-[#c0c9c0]">
+                          <div>
+                            <span className="block font-bold text-white mb-1">Tasks Performed:</span>
+                            <p className="line-clamp-3">{entry.tasksPerformed}</p>
+                          </div>
+                          <div>
+                            <span className="block font-bold text-white mb-1">Skills Acquired:</span>
+                            <p className="line-clamp-3">{entry.skillsAcquired}</p>
+                          </div>
+                        </div>
+
+                        {entry.aiDetails && (
+                          <div className="bg-[#0a100c] p-3 rounded-lg border border-gray-800 mt-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Zap className="w-4 h-4 text-[#77da9f]" />
+                              <span className="text-xs font-bold text-[#77da9f]">AI Analysis</span>
+                            </div>
+                            <div className="text-xs space-y-1.5 text-[#muted]">
+                              <p><strong className="text-white">Quality:</strong> {entry.aiDetails.qualityRating}</p>
+                              {entry.aiDetails.technicalSkills?.length > 0 && (
+                                <p><strong className="text-white">Skills Detected:</strong> {entry.aiDetails.technicalSkills.join(', ')}</p>
+                              )}
+                              {entry.aiDetails.flags?.length > 0 && (
+                                <p><strong className="text-red-400">Flags:</strong> {entry.aiDetails.flags.join(', ')}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            onClick={() => openReviewModal(entry)}
+                            className="px-4 py-2 bg-[#1b211d] border border-[#0f5132] hover:border-[#77da9f] rounded-lg text-xs font-bold text-white transition-all cursor-pointer flex items-center gap-2"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Review Entry
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'SESSIONS' && (
+            <div className="space-y-4">
+              <h2 className="text-sm font-bold text-white tracking-wide">Supervision Sessions</h2>
+              {(!supervisionSessions || supervisionSessions.length === 0) ? (
+                <p className="text-[#muted] text-sm italic">No sessions scheduled.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {supervisionSessions.map(session => {
+                    const student = studentsList.find(s => s.id === session.studentId);
+                    const supervisor = supervisorsList.find(s => s.id === session.supervisorId);
+                    return (
+                      <div key={session.id} className="card-tactile p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{student?.fullName || 'Unknown Student'}</h4>
+                            <p className="text-[10px] text-[#muted] mt-0.5">with {supervisor?.fullName || 'Unknown Supervisor'}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${
+                            session.sessionStatus === 'SCHEDULED' ? 'bg-blue-900/20 text-blue-400 border-blue-800/30' :
+                            session.sessionStatus === 'COMPLETED' ? 'bg-[#198754]/10 text-[#198754] border-[#198754]/20' :
+                            'bg-red-900/20 text-red-500 border-red-700/30'
+                          }`}>
+                            {session.sessionStatus}
+                          </span>
+                        </div>
+                        <div className="pt-3 border-t border-gray-800/50 text-xs space-y-1.5">
+                          <p className="flex items-center gap-2 text-[#c0c9c0]">
+                            <Calendar className="w-3.5 h-3.5 text-[#77da9f]" />
+                            {new Date(session.scheduledTime).toLocaleString()}
+                          </p>
+                          <p className="flex items-center gap-2 text-[#c0c9c0]">
+                            <MapPin className="w-3.5 h-3.5 text-[#77da9f]" />
+                            Room: {session.roomId}
+                          </p>
+                          {session.notes && (
+                            <p className="text-[#muted] mt-2 italic break-words line-clamp-2">&quot;{session.notes}&quot;</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
@@ -1144,6 +1342,97 @@ export default function Home() {
                 <span>{submittingAdmin ? 'Creating Account...' : 'Create Admin Account'}</span>
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Logbook Review Modal */}
+      {reviewEntryId && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-4 bg-black/85 backdrop-blur-sm">
+          <div className="my-auto w-full max-w-lg max-h-[calc(100vh-1.5rem)] overflow-y-auto bg-[#1b211d] border border-[#0f5132] rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-850">
+              <h3 className="text-sm font-bold text-white">Review Logbook Entry</h3>
+              <button 
+                onClick={() => { setReviewEntryId(null); setReviewFeedback(''); }}
+                className="text-[#c0c9c0] hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {reviewError && (
+              <p className="rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-xs font-bold text-red-300">{reviewError}</p>
+            )}
+
+            {reviewSuccess && (
+              <p className="rounded-lg border border-emerald-900 bg-emerald-950/40 px-3 py-2 text-xs font-bold leading-relaxed text-emerald-300">{reviewSuccess}</p>
+            )}
+
+            {(() => {
+              const entry = logbookEntries?.find(e => e.id === reviewEntryId);
+              if (!entry) return null;
+              const student = studentsList.find(s => s.id === entry.studentId);
+              return (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#77da9f] uppercase mb-1">Student</h4>
+                    <p className="text-sm text-white">{student?.fullName || 'Unknown Student'}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-[#77da9f] uppercase mb-1">Tasks Performed</h4>
+                      <div className="bg-[#0a100c] p-3 rounded-lg border border-gray-800 text-xs text-white max-h-40 overflow-y-auto whitespace-pre-wrap">
+                        {entry.tasksPerformed}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-[#77da9f] uppercase mb-1">Skills Acquired</h4>
+                      <div className="bg-[#0a100c] p-3 rounded-lg border border-gray-800 text-xs text-white max-h-40 overflow-y-auto whitespace-pre-wrap">
+                        {entry.skillsAcquired}
+                      </div>
+                    </div>
+                  </div>
+
+                  {entry.aiDetails && (
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-500 uppercase mb-1 flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5" /> AI Feedback Suggestions
+                      </h4>
+                      <div className="bg-amber-900/10 p-3 rounded-lg border border-amber-900/30 text-xs text-amber-200">
+                        <p>{entry.aiDetails.suggestedComment}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#c0c9c0] uppercase tracking-wider mb-2">Your Feedback</label>
+                    <textarea
+                      value={reviewFeedback}
+                      onChange={(e) => setReviewFeedback(e.target.value)}
+                      placeholder="Enter feedback for the student..."
+                      className="w-full bg-[#0a100c] border border-gray-800 rounded-lg p-3 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-[#77da9f] min-h-[100px]"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => handleReviewSubmit('REJECTED')}
+                      disabled={submittingReview}
+                      className="flex-1 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-700/50 text-red-100 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      Reject Entry
+                    </button>
+                    <button
+                      onClick={() => handleReviewSubmit('APPROVED')}
+                      disabled={submittingReview}
+                      className="flex-1 py-2 btn-primary text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      Approve Entry
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
