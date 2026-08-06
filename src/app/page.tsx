@@ -433,8 +433,8 @@ export default function Home() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 bg-[#0f1511] min-h-screen">
         <div className="w-full max-w-md flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-[#1b211d] border-2 border-[#0f5132] flex items-center justify-center shadow-lg">
-            <GraduationCap className="w-8 h-8 text-[#95d4ac]" />
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-white border-2 border-[#0f5132] flex items-center justify-center shadow-lg shrink-0">
+            <img src="/Logo.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="mt-4 text-2xl font-bold text-white tracking-wide">SIWES Connect Admin</h1>
           <p className="text-sm text-[#95d4ac] font-semibold text-center mt-1">
@@ -508,25 +508,7 @@ export default function Home() {
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-gray-800/60">
-            <p className="text-[10px] text-[#77da9f] text-center mb-3 uppercase tracking-wider font-bold">First time setup?</p>
-            <button
-              onClick={handleSeedDefaultAdmin}
-              disabled={seedingAdmin}
-              className="w-full py-2.5 bg-amber-900/20 hover:bg-amber-900/35 border border-amber-700/40 text-amber-100 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {seedingAdmin ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Zap className="w-3.5 h-3.5" />
-              )}
-              <span>{seedingAdmin ? 'Initializing...' : 'Initialize Default Admin Account'}</span>
-            </button>
-            <p className="text-[9px] text-gray-500 text-center mt-2 leading-relaxed">
-              Creates a default admin: <span className="text-gray-400">admin@siwesconnect.edu.ng</span> / <span className="text-gray-400">SIWESAdmin2025!</span><br />
-              Requires SUPABASE_SERVICE_ROLE_KEY in .env.local
-            </p>
-          </div>
+
         </div>
       </div>
     );
