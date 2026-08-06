@@ -135,6 +135,7 @@ export async function POST(request: Request) {
   const { data: profileRows, error: profileError } = await adminClient
     .from('supervisor_profiles')
     .insert([{
+      id: createdUser.user.id,
       user_id: createdUser.user.id,
       staff_id: staffId,
       faculty,
