@@ -538,7 +538,9 @@ export default function Home() {
       <header className="bg-[#1b211d] border-b border-[#0f5132] px-4 py-4 sm:px-6">
         <div>
           <div className="flex items-center gap-2">
-            <img src="/Logo.png" alt="SIWES Connect Logo" className="w-6 h-6 object-contain" />
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-[#0f5132] shrink-0 bg-white">
+              <img src="/Logo.png" alt="SIWES Connect Logo" className="w-full h-full object-cover" />
+            </div>
             <h1 className="text-lg font-bold text-white tracking-wide">SIWES Connect Admin</h1>
           </div>
           <p className="text-xs text-[#77da9f] font-medium mt-0.5">University SIWES Coordinator Dashboard</p>
